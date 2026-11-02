@@ -1,0 +1,5 @@
+package MySh;
+
+public enum Mode {
+  NORMAL_MODE, STRONG_MODE, WEAK_MODE, ESCAPE_MODE, REDIRECT_MODE
+}
