@@ -1,13 +1,22 @@
 package MySh;
 
-import java.io.BufferedReader;
-import java.io.FilterReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.List;
 
 public final class Shell {
+  private final InputStream in;
+  private final PrintStream out;
+
+  Shell(InputStream in, PrintStream out) {
+    this.in = in;
+    this.out = out;
+  }
+
+  private boolean isOpen = true;
+
   private void setRawMode() {
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       try {
@@ -26,69 +35,116 @@ public final class Shell {
     }
   }
 
-  private static StringBuilder input = new StringBuilder();
-
-  private class RawReader extends FilterReader {
-    public RawReader(Reader in) {
-      super(in);
+  private void execute(List<String> args) {
+    if (args.size() == 0) {
+      return;
     }
 
-    @Override
-    public int read() throws IOException {
-      int c = super.read();
-      switch (c) {
-        case Signals.CTRL_C:
-          return -1;
-        case Signals.BACKSPACE1:
-        case Signals.BACKSPACE2:
-          if (input.length() > 0) {
-            input.deleteCharAt(input.length() - 1);
-            System.out.print("\b \b");
-          }
-          return 0;
-        case Signals.TAB:
-          System.out.write(Signals.BELL_SIGNAL);
-          System.out.flush();
-          return 0;
-        case Signals.RETURN:
-          input.append('\n');
-          return (int) '\n';
-        default:
-          input.append((char) c);
-          System.out.print((char) c);
-          return c;
+    String cmd = args.get(0);
+
+    if (cmd.length() == 0) {
+      return;
+    }
+
+    if (cmd.equals("exit")) {
+      isOpen = false;
+      return;
+    } else if (cmd.equals("echo")) {
+      if (args.size() == 1) {
+        out.print("\r\n");
+        return;
       }
+
+      String content = String.join(" ", Arrays.copyOfRange(args.toArray(String[]::new), 1, args.size()));
+      out.println("\r" + content);
+    } else {
+      out.println("\r" + cmd + ": command not found");
     }
   }
 
-  public void println(Object x) {
-    System.out.print("\r\n");
-    System.out.print(x);
-    System.out.print("\r\n\n");
-    System.out.print("$ ");
+  private String[] getCompletionList() {
+    return new String[] {};
   }
 
-  public void println(char c) {
-    println(String.valueOf(c));
-  }
+  private static StringBuilder input = new StringBuilder();
 
   public void run() {
     setRawMode();
 
-    UnixParser parser = new UnixParser();
+    Parser parser = new Parser();
+
     int c;
 
-    try (Reader reader = new RawReader(new BufferedReader(new InputStreamReader(System.in)))) {
-      System.out.print("$ ");
-      while ((c = reader.read()) != -1) {
-        if (c == '\n') {
-          List<String> args = parser.parse(input.toString());
+    out.print("$ ");
+    out.flush();
+
+    try {
+      while (isOpen) {
+        c = in.read();
+
+        if (c == -1) {
+          isOpen = false;
+          break;
+        }
+
+        if (c == Chars.CTRL_D) {
+          out.print(Chars.CTRL_D);
+          out.close();
+          break;
+        }
+
+        if (c == Chars.CTRL_C) {
+          out.print("\r\n\n$ ");
           input.setLength(0);
-          println(args);
+          continue;
+        }
+
+        if (c == Chars.BACKSPACE1 || c == Chars.BACKSPACE2) {
+          if (input.length() > 0) {
+            input.deleteCharAt(input.length() - 1);
+            out.print("\b \b");
+          }
+          continue;
+        }
+
+        if (c == Chars.RETURN) {
+          out.print("\r\n");
+          input.append('\n');
+
+          List<String> args = parser.parse(input.toString());
+
+          input.setLength(0);
+
+          execute(args);
+
+          if (!isOpen) {
+            out.print(Chars.CTRL_D);
+            break;
+          }
+
+          out.print("\r\n" + "$ ");
+        } else if (c == Chars.TAB) {
+          if (getCompletionList().length > 0) {
+            out.write(Chars.BELL_SIGNAL);
+            out.flush();
+          } else {
+            String spaces = " ";
+            out.print(spaces);
+            input.append(spaces);
+          }
+        } else {
+          out.print((char) c);
+          input.append((char) c);
         }
       }
     } catch (IOException ex) {
       ex.printStackTrace();
+    } finally {
+      try {
+        in.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
   }
 }
