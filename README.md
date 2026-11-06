@@ -10,8 +10,7 @@ Lightweight Unix-like command-line shell in Java. Purpose: understand shell inte
 
 ## Requirements
 
-- Java 21 with --enable-preview
-- Java 22+
+- Java 21
 - Maven 3.8+
 
 ## How to run
