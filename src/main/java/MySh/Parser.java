@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 class Parser {
-  List<String> parse(String input) {
+  String[] parse(String input) {
     Mode mode = Mode.NORMAL_MODE;
     Mode backToMode = Mode.NORMAL_MODE;
     StringBuilder arg = new StringBuilder();
@@ -41,6 +41,6 @@ class Parser {
       }
     }
 
-    return args;
+    return args.toArray(String[]::new);
   }
 }

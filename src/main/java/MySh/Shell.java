@@ -1,23 +1,45 @@
 package MySh;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class Shell {
-  private final InputStream in;
-  private final PrintStream out;
-
-  Shell(InputStream in, PrintStream out) {
-    this.in = in;
-    this.out = out;
+  private Shell() {
   }
 
-  private boolean isOpen = true;
+  private static InputStream in = System.in;
+  private static PrintStream out = System.out;
 
-  private void setRawMode() {
+  private static boolean isOpen = true;
+
+  public final static Map<String, Command> builtInCommands = new HashMap<>() {
+    {
+      put("exit", (args) -> isOpen = false);
+      put("echo", (args) -> {
+        if (args.length == 1) {
+          out.print("\r\n");
+          return;
+        }
+
+        String content = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        out.println("\r" + content);
+      });
+      put("type", new TypeCommand());
+    }
+  };
+
+  public static boolean isBuiltInCommand(String cmd) {
+    return builtInCommands.containsKey(cmd);
+  }
+
+  private static void setRawMode() {
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       try {
         String[] command = { "/bin/sh", "-c", "stty sane </dev/tty" };
@@ -35,40 +57,48 @@ public final class Shell {
     }
   }
 
-  private void execute(List<String> args) {
-    if (args.size() == 0) {
+  static String locateExecutable(String cmd) {
+    String[] syspath = System.getenv("PATH").split(File.pathSeparator);
+    for (String path : syspath) {
+      String cmdPath = path + File.separatorChar + cmd;
+      if (Files.isExecutable(Path.of(cmdPath))) {
+        return cmdPath;
+      }
+    }
+    return null;
+  }
+
+  private static void execute(String[] args) {
+    if (args.length == 0) {
       return;
     }
 
-    String cmd = args.get(0);
+    String cmd = args[0];
 
     if (cmd.length() == 0) {
       return;
     }
 
-    if (cmd.equals("exit")) {
-      isOpen = false;
-      return;
-    } else if (cmd.equals("echo")) {
-      if (args.size() == 1) {
-        out.print("\r\n");
-        return;
-      }
+    boolean isBuildIn = builtInCommands.containsKey(cmd);
 
-      String content = String.join(" ", Arrays.copyOfRange(args.toArray(String[]::new), 1, args.size()));
-      out.println("\r" + content);
+    if (isBuildIn) {
+      Command command = builtInCommands.get(cmd);
+      command.run(args);
     } else {
       out.println("\r" + cmd + ": command not found");
     }
   }
 
-  private String[] getCompletionList() {
+  private static String[] getCompletionList() {
     return new String[] {};
   }
 
   private static StringBuilder input = new StringBuilder();
 
-  public void run() {
+  public static void run(InputStream stdin, PrintStream stdout) {
+    in = stdin;
+    out = stdout;
+
     setRawMode();
 
     Parser parser = new Parser();
@@ -111,7 +141,7 @@ public final class Shell {
           out.print("\r\n");
           input.append('\n');
 
-          List<String> args = parser.parse(input.toString());
+          String[] args = parser.parse(input.toString());
 
           input.setLength(0);
 

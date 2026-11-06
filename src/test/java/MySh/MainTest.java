@@ -1,6 +1,8 @@
 package MySh;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,6 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.Map;
 
 public class MainTest {
   @Test
@@ -120,6 +123,96 @@ public class MainTest {
       String expected = String.format("%s: command not found", cmd);
       String message = String.format("Expected output '%s', but was '%s'", expected, outputBuilder.toString());
 
+      assertTrue(outputBuilder.toString().contains(expected), message);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  void shouldInform_whenCommandIsBuiltin() {
+    String[] commands = new String[] { "exit", "type", "echo" };
+
+    for (String cmd : commands) {
+      ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+      StringBuilder outputBuilder = new StringBuilder();
+      int c;
+
+      try {
+        Process proc = pb.start();
+        InputStreamReader reader = new InputStreamReader(proc.getInputStream());
+
+        try (OutputStream os = proc.getOutputStream()) {
+          os.write(("type " + cmd + "\r").getBytes());
+          os.write(Chars.CTRL_D);
+        }
+
+        while ((c = reader.read()) != -1) {
+          outputBuilder.append((char) c);
+        }
+
+        String expected = String.format("%s is a shell builtin", cmd);
+        String message = String.format("Expected output '%s', but was '%s'", expected, outputBuilder.toString());
+        assertTrue(outputBuilder.toString().contains(expected), message);
+      } catch (Exception ex) {
+        ex.printStackTrace();
+      }
+    }
+  }
+
+  @Test
+  void shouldPrintError_whenInvalidCommand() {
+    String cmd = "invalid";
+    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    StringBuilder outputBuilder = new StringBuilder();
+    int c;
+
+    try {
+      Process proc = pb.start();
+      InputStreamReader reader = new InputStreamReader(proc.getInputStream());
+
+      try (OutputStream os = proc.getOutputStream()) {
+        os.write(("type " + cmd + "\r").getBytes());
+        os.write(Chars.CTRL_D);
+      }
+
+      while ((c = reader.read()) != -1) {
+        outputBuilder.append((char) c);
+      }
+
+      String expected = String.format("%s: not found", cmd);
+      String message = String.format("Expected output '%s', but was '%s'", expected, outputBuilder.toString());
+      assertTrue(outputBuilder.toString().contains(expected), message);
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
+  }
+
+  @Test
+  @DisabledOnOs(OS.WINDOWS)
+  void shouldBinPrintLocation_whenInPath_inUnix() {
+    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    Map<String, String> env = pb.environment();
+    env.put("PATH", "/usr/bin/cat" + ":" + env.get("PATH"));
+
+    StringBuilder outputBuilder = new StringBuilder();
+    int c;
+
+    try {
+      Process proc = pb.start();
+      InputStreamReader reader = new InputStreamReader(proc.getInputStream());
+
+      try (OutputStream os = proc.getOutputStream()) {
+        os.write(("type cat" + "\r").getBytes());
+        os.write(Chars.CTRL_D);
+      }
+
+      while ((c = reader.read()) != -1) {
+        outputBuilder.append((char) c);
+      }
+
+      String expected = String.format("cat is /usr/bin/cat");
+      String message = String.format("Expected output '%s', but was '%s'", expected, outputBuilder.toString());
       assertTrue(outputBuilder.toString().contains(expected), message);
     } catch (Exception e) {
       e.printStackTrace();
