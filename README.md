@@ -1,6 +1,6 @@
 # Java Unix Shell
 
-Lightweight Unix-like command-line shell in Java. Purpose: understand shell internals, core utilities (`echo`, `cat`), Java 22 Foreign Function & Memory (FFM) API.
+Lightweight Unix-like command-line shell in Java. Purpose: understand shell internals, core utilities (`echo`, `cat`)
 
 ## Features
 
