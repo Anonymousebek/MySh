@@ -15,9 +15,11 @@ import java.io.OutputStreamWriter;
 import java.util.Map;
 
 public class MainTest {
+  private final String[] processArgs = new String[] { "java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main" };
+
   @Test
   void shouldPrintPrompt_whenStarted() {
-    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    ProcessBuilder pb = new ProcessBuilder().command(processArgs);
     StringBuilder outputBuilder = new StringBuilder();
     int c;
 
@@ -46,7 +48,7 @@ public class MainTest {
 
   @Test
   void shouldPrintPrompt_afterEachCommand() {
-    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    ProcessBuilder pb = new ProcessBuilder().command(processArgs);
 
     try {
       Process proc = pb.start();
@@ -77,8 +79,7 @@ public class MainTest {
 
   @Test
   void shouldClose_afterExitCommand() {
-    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp",
-        "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    ProcessBuilder pb = new ProcessBuilder().command(processArgs);
 
     try {
       Process proc = pb.start();
@@ -100,8 +101,7 @@ public class MainTest {
 
   @Test
   void shouldReportError_forUnknownCommand() {
-    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp",
-        "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    ProcessBuilder pb = new ProcessBuilder().command(processArgs);
     StringBuilder outputBuilder = new StringBuilder();
     int c;
 
@@ -134,7 +134,7 @@ public class MainTest {
     String[] commands = new String[] { "exit", "type", "echo" };
 
     for (String cmd : commands) {
-      ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+      ProcessBuilder pb = new ProcessBuilder().command(processArgs);
       StringBuilder outputBuilder = new StringBuilder();
       int c;
 
@@ -163,7 +163,7 @@ public class MainTest {
   @Test
   void shouldPrintError_whenInvalidCommand() {
     String cmd = "invalid";
-    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    ProcessBuilder pb = new ProcessBuilder().command(processArgs);
     StringBuilder outputBuilder = new StringBuilder();
     int c;
 
@@ -191,7 +191,7 @@ public class MainTest {
   @Test
   @DisabledOnOs(OS.WINDOWS)
   void shouldBinPrintLocation_whenInPath_inUnix() {
-    ProcessBuilder pb = new ProcessBuilder().command("java", "-cp", "target/MySh-1.0-SNAPSHOT.jar", "MySh.Main");
+    ProcessBuilder pb = new ProcessBuilder().command(processArgs);
     Map<String, String> env = pb.environment();
     env.put("PATH", "/usr/bin/cat" + ":" + env.get("PATH"));
 
